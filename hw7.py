@@ -130,10 +130,6 @@ def position_birth_search(position, age, cur, conn):
     return result
 
 
-def position_birth_search(position, age, cur, conn):
-    pass
-
-
 # [EXTRA CREDIT]
 # YouSeasons' with the following columns:
 # id (datatype: int; Primary key) - note this comes from the JSON
@@ -220,19 +216,19 @@ class TestAllMethods(unittest.TestCase):
     def test_make_winners_table(self):
         self.cur2.execute('SELECT * from Winners')
         winners_list = self.cur2.fetchall()
-        pass
+
     
-        def test_make_seasons_table(self):
-            self.cur2.execute('SELECT * from Seasons')
-            seasons_list = self.cur2.fetchall()
-            pass
-        
-        def test_winners_since_search(self):
-            pass
+    def test_make_seasons_table(self):
+        self.cur2.execute('SELECT * from Seasons')
+        seasons_list = self.cur2.fetchall()
+
+    def test_winners_since_search(self):
+        pass
     
     
     def main():
     #### FEEL FREE TO USE THIS SPACE TO TEST OUT YOUR FUNCTIONS
+    
         json_data = read_data('football.json')
         cur, conn = open_database('Football.db')
         make_positions_table(json_data, cur, conn)
