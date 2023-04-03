@@ -52,15 +52,18 @@ def make_positions_table(data, cur, conn):
 
 def make_players_table(data, cur, conn):
     # Create Positions table
-    cur.execute('CREATE TABLE IF NOT EXISTS Positions (id INTEGER PRIMARY KEY, name TEXT)')
+    cur.execute('CREATE TABLE IF NOT EXISTS Positions (id INTEGER PRIMARY KEY, name TEXT, position TEXT UNIQUE)')
     positions = ["Goalkeeper", "Defender", "Midfielder", "Forward"]
+    
     for i, position in enumerate(positions):
-        cur.execute("INSERT INTO Positions (id, name) VALUES (?, ?)", (i+1, position))
+        cur.execute("INSERT INTO Positions (id, name, position) VALUES (?, ?, ?)", (i+1, position, position))
+
     conn.commit()
 
     # Create Players table
     cur.execute('CREATE TABLE IF NOT EXISTS Players (id INTEGER PRIMARY KEY, name TEXT, position_id INTEGER, birthyear INTEGER, nationality TEXT)')
     players = data['squad']
+    
     for player in players:
         birthdate = player['dateOfBirth']
         birthyear = int(birthdate[:4])
@@ -71,6 +74,7 @@ def make_players_table(data, cur, conn):
         cur.execute("SELECT id FROM Positions WHERE name=?", (position_name,))
         position_id = cur.fetchone()[0]
         cur.execute("INSERT INTO Players (id, name, position_id, birthyear, nationality) VALUES (?, ?, ?, ?, ?)", (player['id'], name, position_id, birthyear, nationality))
+   
     conn.commit()
 
 
@@ -149,15 +153,84 @@ def position_birth_search(position, age, cur, conn):
 
 
 def make_winners_table(data, cur, conn):
-    pass
-
-
+    """
+    Creates a table named 'Winners' with 2 columns: id (datatype: int; Primary key) and name (datatype: text).
+    Inserts data from the JSON into the table.
+    """
+    cur.execute('''CREATE TABLE Winners
+                    (id INT PRIMARY KEY,
+                    name TEXT)''')
+    for team in data['teams']:
+        cur.execute("INSERT INTO Winners (id, name) VALUES (?, ?)", (team['id'], team['name'])) 
+    conn.commit()
+    
 def make_seasons_table(data, cur, conn):
-    pass
-
-
+    """
+    Creates a table named 'Seasons' with 3 columns: id (datatype: int; Primary key), winner_id (datatype: text), and end_year (datatype: int).
+    Inserts data from the JSON into the table.
+    """
+    cur.execute('''CREATE TABLE Seasons
+                    (id INT PRIMARY KEY,
+                    winner_id TEXT,
+                    end_year INT)''')
+    for season in data['seasons'][:-1]:
+        if 'winner' in season:
+            winner_id = cur.execute("SELECT id FROM Winners WHERE name=?", (season['winner'],)).fetchone()
+            if winner_id is not None:
+                cur.execute("INSERT INTO Seasons (id, winner_id, end_year) VALUES (?, ?, ?)", (season['id'], winner_id[0], season['yearEnd']))
+    conn.commit()
+    
 def winners_since_search(year, cur, conn):
-    pass
+    """
+    Takes in a year (string), the database cursor, and the database connection object.
+    Returns a dictionary of how many times each team has won the Premier League since the passed year.
+    In the dict, each winning team's (full) name is a key, and the value associated with each team is the number of times they have won since the year passed, including the season that ended the passed year.
+    """
+    year = int(year)
+    winners_dict = {}
+    for row in cur.execute('''SELECT Winners.name, COUNT(*) as count
+                                FROM Seasons
+                                INNER JOIN Winners ON Seasons.winner_id=Winners.id
+                                WHERE end_year>=?
+                                GROUP BY Winners.name''', (year,)):
+        winners_dict[row[0]] = row[1]
+    return winners_dict
+
+
+def make_winners_table(data, cur, conn):
+
+    cur.execute('''CREATE TABLE Winners
+                    (id INT PRIMARY KEY,
+                    name TEXT)''')
+    for team in data['teams']:
+        cur.execute("INSERT INTO Winners (id, name) VALUES (?, ?)", (team['id'], team['name'])) 
+    conn.commit()
+    
+def make_seasons_table(data, cur, conn):
+
+    cur.execute('''CREATE TABLE Seasons
+                    (id INT PRIMARY KEY,
+                    winner_id TEXT,
+                    end_year INT)''')
+    for season in data['seasons'][:-1]:
+        if 'winner' in season:
+            winner_id = cur.execute("SELECT id FROM Winners WHERE name=?", (season['winner'],)).fetchone()
+            if winner_id is not None:
+                cur.execute("INSERT INTO Seasons (id, winner_id, end_year) VALUES (?, ?, ?)", (season['id'], winner_id[0], season['yearEnd']))
+    conn.commit()
+    
+def winners_since_search(year, cur, conn):
+
+    year = int(year)
+    winners_dict = {}
+    for row in cur.execute('''SELECT Winners.name, COUNT(*) as count
+                                FROM Seasons
+                                INNER JOIN Winners ON Seasons.winner_id=Winners.id
+                                WHERE end_year>=?
+                                GROUP BY Winners.name''', (year,)):
+        winners_dict[row[0]] = row[1]
+    return winners_dict
+
 
 
 class TestAllMethods(unittest.TestCase):
