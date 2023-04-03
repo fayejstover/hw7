@@ -1,7 +1,7 @@
-# Your name:
-# Your student id:
-# Your email:
-# List who you have worked with on this project:
+# Your name: Faye Stover
+# Your student id: 5833 6219
+# Your email: fstover@umich.edu
+# List who you have worked with on this project: n/a
 
 import unittest
 import sqlite3
@@ -33,6 +33,7 @@ def make_positions_table(data, cur, conn):
                 cur.execute("INSERT OR IGNORE INTO Positions (id, position) VALUES (?,?)",(i, positions[i]))
             conn.commit()
             
+            
 ## [TASK 1]: 25 points
 # Finish the function make_players_table
 # This function takes 3 arguments: JSON data,
@@ -50,7 +51,27 @@ def make_positions_table(data, cur, conn):
 # created for you -- see make_positions_table above for details.
 
 def make_players_table(data, cur, conn):
-    pass
+    # Create Positions table
+    cur.execute('CREATE TABLE IF NOT EXISTS Positions (id INTEGER PRIMARY KEY, name TEXT)')
+    positions = ["Goalkeeper", "Defender", "Midfielder", "Forward"]
+    for i, position in enumerate(positions):
+        cur.execute("INSERT INTO Positions (id, name) VALUES (?, ?)", (i+1, position))
+    conn.commit()
+
+    # Create Players table
+    cur.execute('CREATE TABLE IF NOT EXISTS Players (id INTEGER PRIMARY KEY, name TEXT, position_id INTEGER, birthyear INTEGER, nationality TEXT)')
+    players = data['squad']
+    for player in players:
+        birthdate = player['dateOfBirth']
+        birthyear = int(birthdate[:4])
+        age = 2023 - birthyear
+        name = player['name']
+        nationality = player['nationality']
+        position_name = player['position']
+        cur.execute("SELECT id FROM Positions WHERE name=?", (position_name,))
+        position_id = cur.fetchone()[0]
+        cur.execute("INSERT INTO Players (id, name, position_id, birthyear, nationality) VALUES (?, ?, ?, ?, ?)", (player['id'], name, position_id, birthyear, nationality))
+    conn.commit()
 
 
 ## [TASK 2]: 10 points
@@ -63,8 +84,24 @@ def make_players_table(data, cur, conn):
 
 
 def nationality_search(countries, cur, conn):
-    pass
+    results = []
+    
+    for country in countries:
+        cur.execute("SELECT name, position_id, nationality FROM Players WHERE nationality=?", (country,))
+        rows = cur.fetchall()
+        results.extend(rows)
+    
+    return results
 
+
+def birthyear_nationality_search(age, country, cur, conn):
+    birth_year = 2023 - age
+    cur.execute('''SELECT Players.name, Players.nationality, Players.birthyear FROM Players
+                JOIN Positions ON Players.position_id = Positions.id
+                WHERE Players.birthyear < ?
+                AND Players.nationality = ?''', (birth_year, country,))
+    result = cur.fetchall()
+    return result
 
 ## [TASK 3]: 10 points
 # finish the function birthyear_nationality_search
@@ -80,8 +117,20 @@ def nationality_search(countries, cur, conn):
 # the players name, position, and birth year.
 # HINT: You'll have to use JOIN for this task.
 
+def position_birth_search(position, age, cur, conn):
+    year = 2023 - age
+    cur.execute("""
+        SELECT Players.name, Positions.name, Players.birth_year
+        FROM Players
+        JOIN Positions
+        ON Players.position_id = Positions.id
+        WHERE Positions.name = ? AND Players.birth_year > ?
+        """, (position, year))
+    result = cur.fetchall()
+    return result
 
-def osition_birth_search(position, age, cur, conn):
+
+def position_birth_search(position, age, cur, conn):
     pass
 
 
@@ -195,6 +244,6 @@ class TestAllMethods(unittest.TestCase):
         make_seasons_table(seasons_json_data, cur2, conn2)
         conn2.close()
         
-if __name__ == "__main__":
-    main()
-unittest.main(verbosity = 2)
+    if __name__ == "__main__":
+        main()
+    unittest.main(verbosity = 2)
